@@ -26,6 +26,7 @@ predict
 
 ```{r}
 #use predictedrace package
+#not sure what changed here
 airbnb_data = airbnb_data %>% 
   mutate(pred_race = predict_race(host_name))
 airbnb_data$pred_race
