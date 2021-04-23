@@ -7,10 +7,76 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(nsprcomp)
+library(predictrace)
+
 ```
 
 ```{r}
+airbnb_data = read_csv("Airbnb_NYC_2019.csv")
+
+airbnb_data
+predict
+
+```
+
+
+
+```{r}
+#use predictedrace package
+airbnb_data = airbnb_data %>% 
+  mutate(pred_race = predict_race(host_name))
+airbnb_data$pred_race
+airbnb_data = airbnb_data %>% 
+  mutate(pred_race_probability =
+           case_when( pred_race$likely_race == "white" ~ pred_race$probability_white,
+                      pred_race$likely_race == "asian" ~ pred_race$probability_asian,
+                      pred_race$likely_race == "black" ~ pred_race$probability_black,
+                      pred_race$likely_race == "hispanic" ~ pred_race$probability_hispanic,
+                      pred_race$likely_race == "american_indian" ~ pred_race$probability_american_indian
+           ))
+  
+airbnb_data
 
 
 ```
+
+```{r}
+#exploratory analysis- Price vs Neighbourhood
+
+ggplot(data = airbnb_data, aes(x=neighbourhood_group, y=price, fill = room_type )) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  ggtitle("Price  vs. Neighborhood")+
+  xlab("Neighborhood Group") + ylab("Price") + theme_minimal()
+
+
+#confirming the plot reaches the max price of each neighbourhood group
+airbnb_data %>% select(price, room_type, neighbourhood_group) %>% 
+  group_by(neighbourhood_group,room_type) %>% 
+  summarize(max_price = max(price)) %>% 
+  filter(neighbourhood_group == "Staten Island")
+```
+
+
+```{r}
+#exploratory data analysis - count of listing type by Borough (neighbourhood group)
+ggplot(data = airbnb_data, aes(x=neighbourhood_group, y=price, fill = room_type )) + 
+  geom_bar(stat="identity", position=position_dodge()) +
+  ggtitle("Price  vs. Neighborhood")+
+  xlab("Neighborhood Group") + ylab("Price") + theme_minimal()
+
+
+airbnb_data %>% 
+  group_by(neighbourhood_group) %>% 
+  count(room_type) %>% 
+  mutate(pct = n / sum(n)) %>% 
+  ggplot(aes(x = neighbourhood_group, pct, fill = room_type)) +
+  geom_col(position = 'dodge')+
+  scale_y_continuous(labels = scales::percent_format()) + ylim(0,1)+
+  ylab("Percentage") + xlab("Neighbourhood") + ggtitle("Count of Listing Type by Neighbourhood")
+ 
+```
+
 
