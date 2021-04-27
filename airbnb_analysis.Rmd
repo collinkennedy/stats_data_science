@@ -11,6 +11,7 @@ library(tidyverse)
 library(readr)
 library(nsprcomp)
 library(predictrace)
+library(ggmap) #used to make heatmaps
 
 #POSSIBLE QUESTIONS:
 #Can we classify 
@@ -111,4 +112,66 @@ airbnb_data %>%
 
 ```
 
+```{r}
+#Yannian's Heat Map:
+#Room Type on X Axis, Price Range on Y axis, count is our "third dimension"
+#heat map tells us that private rooms in the $50-$100 per night range is the overwhelming majority of airbnb rentals (at least in this dataset.)
+#Entire homes, which seem to be the second most common, are unsurprisingly higher price range of about $100-200 per night.
+
+airbnb = read.table("Airbnb_NYC_2019.csv", header = TRUE, sep = ",", quote = "\"", comment.char = "")
+airbnb$last_review = as.Date(airbnb$last_review)
+airbnb$neighbourhood_group = as.factor(airbnb$neighbourhood_group)
+
+#creating a map
+#The key is linked to my school account and is free of use for 90 days.
+register_google(key = "AIzaSyAIOXS__eabiuvNQxuJDZYauMmecXmJeQQ")
+p <- ggmap(get_googlemap(center = c(lon = -73.96353, lat = 40.7895),
+                         zoom = 10, scale = 4,
+                         maptype ='terrain',
+                         color = 'color'))
+#plot each listing on map
+p + geom_point(aes(x = longitude, y = latitude, colour = room_type), data = airbnb, size = 0.5)
+
+#only plotting neighborhood_group Manhattan
+Manhattan = airbnb %>% filter(neighbourhood_group == "Manhattan")
+pm <- ggmap(get_googlemap(center = 'manhattan',
+                          zoom = 11, scale = 4,
+                          maptype ='terrain',
+                          color = 'color'))
+pm + geom_point(aes(x = longitude, y = latitude, colour = room_type), data = Manhattan, size = 0.5) +
+  xlab('Longitude') +
+  ylab('Latitude')
+
+#heat map contingency table
+
+#grouping data
+price_neighbour = airbnb %>%
+  group_by(neighbourhood_group, price_range=cut(price, breaks= seq(0, 500, by = 50), right=F)) %>%
+  summarise(count = length(neighbourhood_group), price = mean(price)) %>%
+  arrange(as.numeric(price_range))
+
+price_roomType = airbnb %>%
+  group_by(room_type, price_range=cut(price, breaks= seq(0, 500, by = 50), right=F)) %>%
+  summarise(count = length(room_type), price = mean(price)) %>%
+  arrange(as.numeric(price_range))
+#changeing NA to [500,)
+price_neighbour$price_range = as.character(price_neighbour$price_range)
+price_neighbour$price_range[is.na(price_neighbour$price_range)] = "[500,)"
+price_neighbour$price_range = as.factor(price_neighbour$price_range)
+#making plots
+ggplot(price_neighbour, aes(x = neighbourhood_group, y = price_range)) +
+  geom_tile(aes(fill = count)) + 
+  geom_text(aes(label = count)) +
+  scale_fill_gradient2(low = 'white', high = 'dark red') +
+  xlab("Neighbourhood Group") +
+  ylab("Price Range")
+
+ggplot(price_roomType, aes(x = room_type, y = price_range)) +
+  geom_tile(aes(fill = count)) + 
+  scale_fill_gradient2(low = 'white', high = 'dark red')
+
+
+
+
+```
 
