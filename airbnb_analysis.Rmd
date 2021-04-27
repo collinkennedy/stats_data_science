@@ -12,6 +12,9 @@ library(readr)
 library(nsprcomp)
 library(predictrace)
 
+#POSSIBLE QUESTIONS:
+#Can we classify 
+
 ```
 
 ```{r}
@@ -27,7 +30,7 @@ predict
 ```{r}
 #use predictedrace package
 #not sure what changed here
-airbnb_data = airbnb_data %>% 
+airbnb_data = airbnb_data %>% na.omit() %>% 
   mutate(pred_race = predict_race(host_name))
 airbnb_data$pred_race
 airbnb_data = airbnb_data %>% 
@@ -37,10 +40,27 @@ airbnb_data = airbnb_data %>%
                       pred_race$likely_race == "black" ~ pred_race$probability_black,
                       pred_race$likely_race == "hispanic" ~ pred_race$probability_hispanic,
                       pred_race$likely_race == "american_indian" ~ pred_race$probability_american_indian
+           )) %>% 
+  mutate(predicted_race =
+           case_when( pred_race$likely_race == "white" ~ "white",
+                      pred_race$likely_race == "asian" ~ "asian",
+                      pred_race$likely_race == "black" ~ "black",
+                      pred_race$likely_race == "hispanic" ~ "hispanic",
+                      pred_race$likely_race == "american_indian" ~ "american indian"
            ))
   
-airbnb_data
 
+
+
+#how many of each predicted race?
+airbnb_data %>% na.omit() %>% 
+  group_by(predicted_race) %>% 
+  summarize(number_each_race = n()) %>% 
+  arrange(desc(number_each_race))
+
+
+#do the proportions of race in the sample reflect census data? are certain races over or under represented in Airbnb data?
+# if so, do these differences reflect some sort of racial bias in homeownership?
 
 ```
 
@@ -78,6 +98,14 @@ airbnb_data %>%
   scale_y_continuous(labels = scales::percent_format()) + ylim(0,1)+
   ylab("Percentage") + xlab("Neighbourhood") + ggtitle("Count of Listing Type by Neighbourhood")
  
+```
+```{r}
+airbnb_data %>% 
+  group_by(neighbourhood_group) %>% 
+  summarize(avg_price = mean(price))
+
+
+
 ```
 
 
