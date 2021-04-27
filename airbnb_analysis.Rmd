@@ -32,21 +32,24 @@ predict
 #not sure what changed here
 airbnb_data = airbnb_data %>% na.omit() %>% 
   mutate(pred_race = predict_race(host_name))
-airbnb_data$pred_race
+
+
 airbnb_data = airbnb_data %>% 
   mutate(pred_race_probability =
            case_when( pred_race$likely_race == "white" ~ pred_race$probability_white,
                       pred_race$likely_race == "asian" ~ pred_race$probability_asian,
                       pred_race$likely_race == "black" ~ pred_race$probability_black,
                       pred_race$likely_race == "hispanic" ~ pred_race$probability_hispanic,
-                      pred_race$likely_race == "american_indian" ~ pred_race$probability_american_indian
+                      pred_race$likely_race == "american_indian" ~ pred_race$probability_american_indian,
+                      pred_race$likely_race == "other" ~ pred_race$probability_2races
            )) %>% 
   mutate(predicted_race =
            case_when( pred_race$likely_race == "white" ~ "white",
                       pred_race$likely_race == "asian" ~ "asian",
                       pred_race$likely_race == "black" ~ "black",
                       pred_race$likely_race == "hispanic" ~ "hispanic",
-                      pred_race$likely_race == "american_indian" ~ "american indian"
+                      pred_race$likely_race == "american_indian" ~ "american indian",
+                      pred_race$likely_race == "black, white" ~ "other"
            ))
   
 airbnb_data
