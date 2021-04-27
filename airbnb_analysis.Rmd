@@ -49,7 +49,7 @@ airbnb_data = airbnb_data %>%
                       pred_race$likely_race == "american_indian" ~ "american indian"
            ))
   
-
+airbnb_data
 
 
 #how many of each predicted race?
