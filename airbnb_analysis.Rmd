@@ -198,6 +198,7 @@ summary(fit)
 
 
 
+
 airbnb_data <- airbnb_data %>% na.omit()
 train <- airbnb_data %>% sample_frac(.8)
 test <- airbnb_data %>% setdiff(train)
@@ -218,13 +219,40 @@ bestridge <- glmnet(xvars, yvars, alpha = 0, lambda = best_lam)
 newX <- sparse.model.matrix(~.-price, data = test)
 newX = as.matrix(newX) %>% as.data.frame()
 
-
 pred <- predict(bestridge, s = best_lam, newx = newX)
 
 
 
 
+```
 
+```{r}
+#Yannian's Ridge
+sample_size = floor(0.8 * nrow(airbnb_data))
+
+set.seed(123)
+train_ind = sample(seq_len(nrow(airbnb_data)), size = sample_size)
+
+train = airbnb_data[train_ind, ]
+test = airbnb_data[-train_ind, ]
+
+xtrain = train %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
+ytrain = train$price
+
+xtest = test %>% select(-price,-predicted_race) %>% data.matrix()
+ytest = test$price
+
+lambdas <- 10^seq(2, -3, by = -.1)
+
+reidge_model = glmnet(xtrain, ytrain, nlambda = 25, family = 'gaussian', lambda = lambdas)
+
+ridge_cv = cv.glmnet(xtrain, ytrain, alpha = 0, lambda = lambdas)
+best_lam = ridge_cv$lambda.min
+best_lam
+
+pred = predict(ridge_model, s = best_lam, newx = xtest)
+
+sum((pred - ytest)^2)
 ```
 
 
