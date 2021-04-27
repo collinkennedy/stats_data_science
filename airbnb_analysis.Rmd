@@ -137,7 +137,7 @@ p + geom_point(aes(x = longitude, y = latitude, colour = room_type), data = airb
 
 #only plotting neighborhood_group Manhattan
 Manhattan = airbnb %>% filter(neighbourhood_group == "Manhattan")
-pm <- ggmap(get_googlemap(center = 'manhattan',
+pm <- ggmap(get_googlemap(center = c(lon = mean(Manhattan$longitude), lat = mean(Manhattan$latitude)),
                           zoom = 11, scale = 4,
                           maptype ='terrain',
                           color = 'color'))
@@ -237,9 +237,10 @@ pred <- predict(bestridge, s = best_lam, newx = newX)
 
 ```{r}
 #Yannian's Ridge
+library(glmnet)
+set.seed(123)
 sample_size = floor(0.8 * nrow(airbnb_data))
 
-set.seed(123)
 train_ind = sample(seq_len(nrow(airbnb_data)), size = sample_size)
 
 train = airbnb_data[train_ind, ]
@@ -248,20 +249,23 @@ test = airbnb_data[-train_ind, ]
 xtrain = train %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytrain = train$price
 
-xtest = test %>% select(-price,-predicted_race) %>% data.matrix()
+xtest = test %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytest = test$price
 
 lambdas <- 10^seq(2, -3, by = -.1)
 
-reidge_model = glmnet(xtrain, ytrain, nlambda = 25, family = 'gaussian', lambda = lambdas)
+ridge_model = glmnet(xtrain, ytrain, nlambda = 25, family = 'gaussian', lambda = lambdas)
 
 ridge_cv = cv.glmnet(xtrain, ytrain, alpha = 0, lambda = lambdas)
 best_lam = ridge_cv$lambda.min
-best_lam
 
 pred = predict(ridge_model, s = best_lam, newx = xtest)
 
-sum((pred - ytest)^2)
+#SSE
+SSE = sum((pred - ytest)^2)
+SST = sum((ytest - mean(ytest))^2)
+RSquared = 1 - (SSE/SST)
+RSquared
 ```
 
 
