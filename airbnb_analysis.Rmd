@@ -12,7 +12,8 @@ library(readr)
 library(nsprcomp)
 library(predictrace)
 library(ggmap) #used to make heatmaps
-
+library(glmnet)
+?glmnet
 #POSSIBLE QUESTIONS:
 #Can we classify 
 
@@ -51,10 +52,11 @@ airbnb_data = airbnb_data %>%
                       pred_race$likely_race == "hispanic" ~ "hispanic",
                       pred_race$likely_race == "american_indian" ~ "american indian",
                       pred_race$likely_race == "black, white" ~ "other"
-           ))
+           )) %>% select(-pred_race)
   
-airbnb_data
 
+
+airbnb_data
 
 #how many of each predicted race?
 airbnb_data %>% na.omit() %>% 
@@ -104,6 +106,7 @@ airbnb_data %>%
  
 ```
 ```{r}
+#average price by borough
 airbnb_data %>% 
   group_by(neighbourhood_group) %>% 
   summarize(avg_price = mean(price))
@@ -174,4 +177,59 @@ ggplot(price_roomType, aes(x = room_type, y = price_range)) +
 
 
 ```
+
+
+
+```{r}
+#Ridge Regression
+library(glmnet)
+y <- airbnb_data$price %>% na.omit()
+length(y)
+x <- airbnb_data %>% select(-price,-pred_race) %>% data.matrix()
+
+x <- model.matrix( airbnb_data~ . - price - pred_race, airbnb_data)
+apply(airbnb_data,2,length)
+lambdas <- 10^seq(3, -2, by = -.1)
+
+fit <- glmnet(x, y, alpha = 0, lambda = lambdas)
+summary(fit)
+
+
+
+
+
+airbnb_data <- airbnb_data %>% na.omit()
+train <- airbnb_data %>% sample_frac(.8)
+test <- airbnb_data %>% setdiff(train)
+xtrain <- sparse.model.matrix(price~., data = train)
+xtest <- sparse.model.matrix(price~., data = test)
+
+ytrain <- train %>% select(price) %>% unlist() %>% as.numeric()
+ytest <- test %>% select(price) %>% unlist() %>% as.numeric()
+
+grid <- 10^seq(10,-2,length = 100)
+ridgemod <- glmnet(xtrain,ytrain, alpha = 0, lambda = grid)
+plot(ridgemod)
+ridge_cv <- cv.glmnet(xtrain, ytrain, alpha = 0)
+best_lam <- ridge_cv$lambda.min
+best_model <- ridge_cv$glmnet.fit
+bestridge <- glmnet(xvars, yvars, alpha = 0, lambda = best_lam)
+
+newX <- sparse.model.matrix(~.-price, data = test)
+newX = as.matrix(newX) %>% as.data.frame()
+
+
+pred <- predict(bestridge, s = best_lam, newx = newX)
+
+
+
+
+
+```
+
+
+
+
+
+
 
