@@ -179,6 +179,15 @@ ggplot(price_roomType, aes(x = room_type, y = price_range)) +
 ```
 
 
+```{r}
+#OLS
+olsmod <- lm(data = train, price~as.factor(neighbourhood_group) + as.factor(predicted_race))
+summary(olsreg)
+stargazer(olsreg, type = "text")
+pred <- predict(olsmod, data = test)
+compare <- cbind(actual = test$price, pred)
+
+```
 
 ```{r}
 #Ridge Regression
