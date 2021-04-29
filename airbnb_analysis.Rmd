@@ -16,6 +16,8 @@ library(glmnet)
 ?glmnet
 #POSSIBLE QUESTIONS:
 #Can we classify 
+install.packages("plotly")
+?plotly
 
 ```
 
@@ -53,7 +55,12 @@ airbnb_data = airbnb_data %>%
     price >= 5000 & price < 7500 ~ "5000-7499",
     price >= 7500 & price <=10000 ~ "7500-10000"
   ))
-airbnb_data
+airbnb_data$price_range = factor(airbnb_data$price_range, levels = c("0-99", "100-299", "300-499",
+                                                                     "500 - 699", "700-999","1000-2499",
+                                                                     "2500-4999","5000-7499",
+                                                                    "7500-10000"))
+
+
 ```
 
 
@@ -106,6 +113,14 @@ airbnb_data %>%
 #   summarize(count = n())
 ```
 
+```{r}
+airbnb_data %>% ggplot(mapping = aes(x = price_range,y = price))+
+  geom_boxplot()
+
+airbnb_data %>% ggplot(mapping = aes(x = price_range))+
+  geom_bar()
+
+```
 
 
 
