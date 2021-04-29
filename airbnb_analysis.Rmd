@@ -21,17 +21,6 @@ library(glmnet)
 
 ```{r}
 airbnb_data = read_csv("Airbnb_NYC_2019.csv")
-
-airbnb_data
-predict
-
-```
-
-
-
-```{r}
-#use predictedrace package
-#not sure what changed here
 airbnb_data = airbnb_data %>% na.omit() %>% 
   mutate(pred_race = predict_race(host_name))
 
@@ -52,11 +41,28 @@ airbnb_data = airbnb_data %>%
                       pred_race$likely_race == "hispanic" ~ "hispanic",
                       pred_race$likely_race == "american_indian" ~ "american indian",
                       pred_race$likely_race == "black, white" ~ "other"
-           )) %>% select(-pred_race)
-  
-
-
+           )) %>% select(-pred_race) %>%
+  mutate(price_range = case_when(
+    (price >= 0 & price < 100) ~ "0-99",
+    price >= 100 & price < 300 ~ "100-299",
+    price >=300 & price < 500 ~ "300-499",
+    price >=500 & price < 700 ~ "500 - 699",
+    price >= 700 & price < 1000 ~ "700-999",
+    (price >= 1000 & price < 2500) ~ "1000-2499",
+    price >= 2500 & price < 5000 ~ "2500-4999",
+    price >= 5000 & price < 7500 ~ "5000-7499",
+    price >= 7500 & price <=10000 ~ "7500-10000"
+  ))
 airbnb_data
+```
+
+
+
+```{r}
+#use predictedrace package
+#not sure what changed here
+
+
 
 #how many of each predicted race?
 airbnb_data %>% na.omit() %>% 
@@ -68,7 +74,40 @@ airbnb_data %>% na.omit() %>%
 #do the proportions of race in the sample reflect census data? are certain races over or under represented in Airbnb data?
 # if so, do these differences reflect some sort of racial bias in homeownership?
 
+
+#number of distinct neighborhoods
+# airbnb_data %>% 
+#   group_by(neighbourhood) %>% 
+#   summarize(number_of_neighborhoods = n_distinct(neighbourhood))
+
+
+# airbnb_data = airbnb_data %>% 
+#   mutate(price_range = case_when(
+#     (price >= 0 & price < 100) ~ "0-99",
+#     price >= 100 & price < 300 ~ "100-299",
+#     price >=300 & price < 500 ~ "300-499",
+#     price >=500 & price < 700 ~ "500 - 699",
+#     price >= 700 & price < 1000 ~ "700-999",
+#     (price >= 1000 & price < 2500) ~ "1000-2499",
+#     price >= 2500 & price < 5000 ~ "2500-4999",
+#     price >= 5000 & price < 7500 ~ "5000-7499",
+#     price >= 7500 & price <=10000 ~ "7500-10000"
+#   ))
+
+
+
+
+airbnb_data %>% 
+  group_by(price_range) %>% 
+  summarize(count = n())
+
+# airbnb_data %>% 
+#   group_by(price) %>% 
+#   summarize(count = n())
 ```
+
+
+
 
 ```{r}
 #exploratory analysis- Price vs Neighbourhood
