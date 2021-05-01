@@ -184,7 +184,7 @@ airbnb_data %>% select(price, room_type, neighbourhood_group) %>%
 #exploratory data analysis - count of listing type by Borough (neighbourhood group)
 ggplot(data = airbnb_data, aes(x=neighbourhood_group, y=price, fill = room_type )) + 
   geom_bar(stat="identity", position=position_dodge()) +
-  ggtitle("Price  vs. Borough (Neighbourhood Group")+
+  ggtitle("Price  vs. Borough (Neighbourhood Group)")+
   xlab("Borough") + ylab("Price") + theme_minimal()
 
 
@@ -196,7 +196,33 @@ airbnb_data %>%
   geom_col(position = 'dodge')+
   scale_y_continuous(labels = scales::percent_format()) + ylim(0,1)+
   ylab("Percentage") + xlab("Neighbourhood") + ggtitle("Count of Listing Type by Neighbourhood")
- 
+
+
+
+
+
+#Chi Square test (I got side tracked but wanted to see if proportion of shared rooms in each borough were equal or not)
+number_shared_rooms = airbnb_data %>% 
+  filter(room_type == "Shared room") %>% 
+  group_by(neighbourhood_group) %>% 
+  summarize(number_share_rooms = n())
+
+total_rooms = airbnb_data %>% 
+  group_by(neighbourhood_group) %>% 
+  summarize(total_rooms = length(room_type))
+total_rooms
+
+#join
+joined_df = number_shared_rooms %>% 
+  inner_join(total_rooms, by = "neighbourhood_group") %>% 
+  mutate(prop_shared_rooms = number_share_rooms/total_rooms)
+joined_df
+
+#the proportion of shared rooms is same across neighbourhood group 
+prop.test(joined_df$number_share_rooms,joined_df$total_rooms)
+
+
+
 ```
 ```{r}
 #average price by borough
@@ -287,9 +313,9 @@ compare <- cbind(actual = test$price, pred)
 library(glmnet)
 y <- airbnb_data$price %>% na.omit()
 length(y)
-x <- airbnb_data %>% select(-price,-pred_race) %>% data.matrix()
+x <- airbnb_data %>% select(-price) %>% data.matrix()
 
-x <- model.matrix( airbnb_data~ . - price - pred_race, airbnb_data)
+x <- model.matrix( airbnb_data~ . - price, airbnb_data)
 apply(airbnb_data,2,length)
 lambdas <- 10^seq(3, -2, by = -.1)
 
@@ -378,7 +404,7 @@ ggplot(barplot_data, aes(fill=predicted_race, y=value, x=neighbourhood_group)) +
 
 
 
-
+#attempt at pie chart
 ```{r}
 # Create Data
 data <- data.frame(
