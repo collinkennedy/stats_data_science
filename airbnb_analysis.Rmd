@@ -13,14 +13,18 @@ library(nsprcomp)
 library(predictrace)
 library(ggmap) #used to make heatmaps
 library(glmnet)
-?glmnet
+library(leaflet)
+?leaflet
+
 #POSSIBLE QUESTIONS:
 #Can we classify 
-install.packages("plotly")
-?plotly
+
+
 
 ```
 
+
+#Wrangling Data
 ```{r}
 airbnb_data = read_csv("Airbnb_NYC_2019.csv")
 airbnb_data = airbnb_data %>% na.omit() %>% 
@@ -54,13 +58,18 @@ airbnb_data = airbnb_data %>%
     price >= 2500 & price < 5000 ~ "2500-4999",
     price >= 5000 & price < 7500 ~ "5000-7499",
     price >= 7500 & price <=10000 ~ "7500-10000"
-  ))
+  )) %>% na.omit()
+
 airbnb_data$price_range = factor(airbnb_data$price_range, levels = c("0-99", "100-299", "300-499",
                                                                      "500 - 699", "700-999","1000-2499",
                                                                      "2500-4999","5000-7499",
                                                                     "7500-10000"))
 
+?colour_scale_gradient
 
+airbnb_data %>% 
+  group_by(room_type) %>% 
+  summarize(distinct_neighborhoods = n())
 ```
 
 
@@ -114,11 +123,41 @@ airbnb_data %>%
 ```
 
 ```{r}
+colors = c("cyan1", "cyan2", "cyan3", "cyan4", "blue1", "blue2", "blue3", "blue4", "blueviolet")
+# names(colors) = levels(airbnb_data$price_range)
+names(colors) <- levels(factor(c(levels(airbnb_data$price_range)))) # Extract all levels of both data
+
+colors
+my_scale = scale_fill_manual(name = airbnb_data$price_range, values = colors)
+
+
 airbnb_data %>% ggplot(mapping = aes(x = price_range,y = price))+
   geom_boxplot()
 
-airbnb_data %>% ggplot(mapping = aes(x = price_range))+
-  geom_bar()
+
+
+ggplot(data = airbnb_data, mapping = aes(x = price_range)) +
+geom_bar() + scale_color_manual(values = c("0-99" = "purple",
+                                "versicolor"="orange",
+                                "virginica"= "steelblue"))+theme_minimal()
+
+  
+ggplot(data = airbnb_data, mapping = aes(x = price_range)) +
+  geom_bar(fill = colors)
+
+airbnb_data %>% 
+  group_by(predicted_race) %>% 
+  summarize()
+
+
+
+
+#colors for predicted_race map
+colors_predicted_race = c("blue", "mediumorchid2", "orange", "yellow2", "green4")
+names(colors) <- levels(factor(c(levels(airbnb_data$predicted_race))))
+
+ggplot(data = airbnb_data, mapping = aes(x = predicted_race)) +
+  geom_bar(fill = colors_predicted_race)
 
 ```
 
@@ -145,8 +184,8 @@ airbnb_data %>% select(price, room_type, neighbourhood_group) %>%
 #exploratory data analysis - count of listing type by Borough (neighbourhood group)
 ggplot(data = airbnb_data, aes(x=neighbourhood_group, y=price, fill = room_type )) + 
   geom_bar(stat="identity", position=position_dodge()) +
-  ggtitle("Price  vs. Neighborhood")+
-  xlab("Neighborhood Group") + ylab("Price") + theme_minimal()
+  ggtitle("Price  vs. Borough (Neighbourhood Group")+
+  xlab("Borough") + ylab("Price") + theme_minimal()
 
 
 airbnb_data %>% 
@@ -303,6 +342,7 @@ test = airbnb_data[-train_ind, ]
 xtrain = train %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytrain = train$price
 
+xtrain
 xtest = test %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytest = test$price
 
@@ -323,8 +363,44 @@ RSquared
 ```
 
 
+```{r}
+#pie chart for predicted race by neighborhood
+#Brooklyn 
+
+
+# Stacked + percent
+ggplot(barplot_data, aes(fill=predicted_race, y=value, x=neighbourhood_group)) + 
+    geom_bar(position="fill", stat="identity") +
+    scale_y_continuous(labels = function(x) paste0(x*100, "%")) +
+    xlab("Neighborhood Group") +
+    ylab("Percent")
+```
 
 
 
 
+```{r}
+# Create Data
+data <- data.frame(
+  group=LETTERS[1:5],
+  value=c(13,7,9,21,2)
+)
+
+# Compute the position of labels
+data <- data %>% 
+  arrange(desc(group)) %>%
+  mutate(prop = value / sum(data$value) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop )
+data
+
+# Basic piechart
+ggplot(data, aes(x="", y=prop, fill=group)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  theme(legend.position="none") +
+  
+  geom_text(aes(y = ypos, label = group), color = "white", size=6) +
+  scale_fill_brewer(palette="Set1")
+```
 
