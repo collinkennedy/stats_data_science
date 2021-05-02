@@ -201,38 +201,32 @@ airbnb_data %>%
 
 
 
-#Chi Square test (I got side tracked but wanted to see if proportion of shared rooms in each borough were equal or not)
-number_shared_rooms = airbnb_data %>% 
-  filter(room_type == "Shared room") %>% 
-  group_by(neighbourhood_group) %>% 
-  summarize(number_share_rooms = n())
-
-total_rooms = airbnb_data %>% 
-  group_by(neighbourhood_group) %>% 
-  summarize(total_rooms = length(room_type))
-total_rooms
-
-#join
-joined_df = number_shared_rooms %>% 
-  inner_join(total_rooms, by = "neighbourhood_group") %>% 
-  mutate(prop_shared_rooms = number_share_rooms/total_rooms)
-joined_df
-
-#the proportion of shared rooms is same across neighbourhood group 
-prop.test(joined_df$number_share_rooms,joined_df$total_rooms)
-
-
-
 ```
 ```{r}
 #average price by borough
 airbnb_data %>% 
-  group_by(neighbourhood_group) %>% 
-  summarize(avg_price = mean(price))
+  group_by(neighbourhood_group,room_type) %>% 
+  summarize(avg_price = mean(price)) %>% 
+  ggplot(mapping = aes(x = neighbourhood_group, y = avg_price, fill = room_type))+
+  geom_bar(stat = "identity",color = "white",position = position_dodge())+
+  geom_text(aes(label=round(avg_price,2)), vjust=1.6, color="black",position = position_dodge(0.9), size=3.5)+
+  ggtitle("Average Price of Airbnb Rental in each Borough",subtitle = "by Room Type " )+
+  xlab("Borough") + ylab("Average Price")+
+  theme_minimal()
+
 
 
 
 ```
+
+
+```{r}
+
+```
+
+
+
+
 
 ```{r}
 #Yannian's Heat Map:
@@ -368,7 +362,6 @@ test = airbnb_data[-train_ind, ]
 xtrain = train %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytrain = train$price
 
-xtrain
 xtest = test %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
 ytest = test$price
 
@@ -376,8 +369,13 @@ lambdas <- 10^seq(2, -3, by = -.1)
 
 ridge_model = glmnet(xtrain, ytrain, nlambda = 25, family = 'gaussian', lambda = lambdas)
 
+ridge_model
+
 ridge_cv = cv.glmnet(xtrain, ytrain, alpha = 0, lambda = lambdas)
 best_lam = ridge_cv$lambda.min
+
+ridge_cv
+best_lam
 
 pred = predict(ridge_model, s = best_lam, newx = xtest)
 
