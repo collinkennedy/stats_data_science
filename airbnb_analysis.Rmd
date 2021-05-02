@@ -14,6 +14,7 @@ library(predictrace)
 library(ggmap) #used to make heatmaps
 library(glmnet)
 library(leaflet)
+library(httr)
 ?leaflet
 
 #POSSIBLE QUESTIONS:
@@ -309,7 +310,7 @@ y <- airbnb_data$price %>% na.omit()
 length(y)
 x <- airbnb_data %>% select(-price) %>% data.matrix()
 
-x <- model.matrix( airbnb_data~ . - price, airbnb_data)
+x <- model.matrix(airbnb_data~ . - price, airbnb_data)
 apply(airbnb_data,2,length)
 lambdas <- 10^seq(3, -2, by = -.1)
 
@@ -359,10 +360,10 @@ train_ind = sample(seq_len(nrow(airbnb_data)), size = sample_size)
 train = airbnb_data[train_ind, ]
 test = airbnb_data[-train_ind, ]
 
-xtrain = train %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
+xtrain = train %>% select(-id,-name,-host_id,-host_name,-price) %>% data.matrix()
 ytrain = train$price
 
-xtest = test %>% select(-id,-name,-host_id,-host_name,-price,-predicted_race) %>% data.matrix()
+xtest = test %>% select(-id,-name,-host_id,-host_name,-price) %>% data.matrix()
 ytest = test$price
 
 lambdas <- 10^seq(2, -3, by = -.1)
@@ -402,29 +403,174 @@ ggplot(barplot_data, aes(fill=predicted_race, y=value, x=neighbourhood_group)) +
 
 
 
-#attempt at pie chart
+#Yannian's Map
 ```{r}
-# Create Data
-data <- data.frame(
-  group=LETTERS[1:5],
-  value=c(13,7,9,21,2)
-)
+#leaflet map
 
-# Compute the position of labels
-data <- data %>% 
-  arrange(desc(group)) %>%
-  mutate(prop = value / sum(data$value) *100) %>%
-  mutate(ypos = cumsum(prop)- 0.5*prop )
-data
+#creating the map
+#get the shape file
+library(leaflet)
+r <- httr::GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
+nyc_neighborhoods <- rgdal::readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
 
-# Basic piechart
-ggplot(data, aes(x="", y=prop, fill=group)) +
-  geom_bar(stat="identity", width=1, color="white") +
-  coord_polar("y", start=0) +
-  theme_void() + 
-  theme(legend.position="none") +
-  
-  geom_text(aes(y = ypos, label = group), color = "white", size=6) +
-  scale_fill_brewer(palette="Set1")
+#Arrange Data
+airbnb_data$predicted_race = as.factor(airbnb_data$predicted_race)
+price_neighbour = airbnb_data %>%
+  group_by(neighbourhood, neighbourhood_group) %>%
+  summarise(count = length(neighbourhood),
+            median_price = median(price),
+            average_price = mean(price),
+            dominant_race = names(table(predicted_race))[which.max(table(predicted_race))]) %>%#https://stackoverflow.com/questions/32766325/fastest-way-of-determining-most-frequent-factor-in-a-grouped-data-frame-in-dplyr
+  arrange(neighbourhood)
+
+race_median_borrough = airbnb_data %>%
+  group_by(neighbourhood_group) %>%
+  summarise(median_price = median(price),
+            dominant_race = names(table(predicted_race))[which.max(table(predicted_race))],
+            longitude = mean(longitude),
+            latitude = mean(latitude))
+
+#Add data to GeoJson file
+units_count = 1:310
+median_price_neighbour = 1:310
+race_neighbour = c(rep("white", 60), rep("black", 60), rep("asian",60), rep("hispanic",60), rep("american indian",60),rep("no_data",10))
+price_neighbour_count = price_neighbour$count
+price_neighbour_median = price_neighbour$median_price
+races = price_neighbour$dominant_race
+names(price_neighbour_count) = levels(as.factor(price_neighbour$neighbourhood))
+names(price_neighbour_median) = levels(as.factor(price_neighbour$neighbourhood))
+names(races) = levels(as.factor(price_neighbour$neighbourhood))
+
+for(i in 1:310){
+  name = nyc_neighborhoods@data$neighborhood[[i]]
+  value = price_neighbour_count[name]
+  if(is.na(value)){
+    units_count[i] = 0
+  } else {
+    units_count[i] = value
+  }
+}
+
+for(i in 1:310){
+  name = nyc_neighborhoods@data$neighborhood[[i]]
+  value = price_neighbour_median[name]
+  if(is.na(value)){
+    median_price_neighbour[i] = 0
+  } else {
+    median_price_neighbour[i] = value
+  }
+}
+
+for(i in 1:310){
+  name = nyc_neighborhoods@data$neighborhood[[i]]
+  value = races[name]
+  if(is.na(value)){
+    race_neighbour[i] = "no_data"
+  } else {
+    race_neighbour[i] = value
+  }
+}
+
+nyc_neighborhoods@data$count = units_count
+nyc_neighborhoods@data$median_price = median_price_neighbour
+nyc_neighborhoods@data$dominant_race = as.character(race_neighbour)
+
+nyc_neighborhoods.df = as.data.frame(nyc_neighborhoods)
+
+#coloring functions
+pal <- colorFactor(
+  palette = topo.colors(5),
+  domain = nyc_neighborhoods@data$borough)
+
+pal1 <- colorNumeric(
+  palette = "Reds",
+  domain = nyc_neighborhoods@data$median_price_neighbour)
+
+#popup labels
+nyc_neighborhoods.df = as.data.frame(nyc_neighborhoods)
+labels = sprintf("<strong>%s</strong><br/>Median Price: %g <br/>Dominant Race: %s",
+                 nyc_neighborhoods.df$neighborhood, nyc_neighborhoods.df$median_price, nyc_neighborhoods.df$dominant_race) %>%
+  lapply(htmltools::HTML)
+
+labels1 = sprintf("<strong>%s</strong><br/> %s <br/>Median Price: %g <br/>Dominant Race: %s",
+                  nyc_neighborhoods.df$borough, nyc_neighborhoods.df$neighborhood, nyc_neighborhoods.df$median_price, nyc_neighborhoods.df$dominant_race) %>%
+  lapply(htmltools::HTML)
+
+Manhattan_content = paste(sep = "",
+                 "<b>Manhattan</b><br/>",
+                 "Median Price: ", race_median_borrough$median_price[3],"<br/>",
+                 "Predicted Dominant Race:", race_median_borrough$dominant_race[3])#https://rstudio.github.io/leaflet/popups.html
+
+Bronx_content = paste(sep = "",
+                      "<b>Bronx</b><br/>",
+                      "Median Price: ", race_median_borrough$median_price[1],"<br/>",
+                      "Predicted Dominant Race:", race_median_borrough$dominant_race[1])
+
+Brooklyn_content = paste(sep = "",
+                         "<b>Brooklyn</b><br/>",
+                         "Median Price: ", race_median_borrough$median_price[2],"<br/>",
+                         "Predicted Dominant Race:", race_median_borrough$dominant_race[2])
+
+Queens_content = paste(sep = "",
+                       "<b>Queens</b><br/>",
+                       "Median Price: ", race_median_borrough$median_price[4],"<br/>",
+                       "Predicted Dominant Race:", race_median_borrough$dominant_race[4])
+
+Staten_Island_content = paste(sep = "",
+      "<b>Staten Island</b><br/>",
+      "Median Price: ", race_median_borrough$median_price[5],"<br/>",
+      "Predicted Dominant Race:", race_median_borrough$dominant_race[5])
+
+#making map
+nyc_map = leaflet(nyc_neighborhoods) %>%
+  addPolygons(fillColor = ~pal(borough),
+              dashArray = "2",
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.5,
+              group = "Borough",
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE)) %>%
+  addPolygons(fillColor = ~pal1(price_neighbour_median),
+              dashArray = "2",
+              weight = 1,
+              color = "black",
+              fillOpacity = 0.5,
+              group = "Median Price",
+              highlight = highlightOptions(
+                weight = 5,
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")) %>%
+  addLayersControl(baseGroups = c("Borough", "Median Price"),
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addLegend(pal = pal, values = ~borough, opacity = 0.5, title = NULL,
+            position = "bottomright") %>%
+  addLegend(pal = pal1, values = ~price_neighbour_median, opacity = 0.5, title = NULL,
+            position = "bottomright") %>%
+  addPopups(-73.98589201142906, 40.755771283, Manhattan_content,
+            options = popupOptions(closeButton = TRUE,maxWidth = 100)) %>%
+  addPopups(-73.8355080975089, 40.88371907524592, Bronx_content,
+            options = popupOptions(closeButton = TRUE,maxWidth = 100)) %>%
+  addPopups(-73.95201733179279,40.59818409943234,  Brooklyn_content,
+            options = popupOptions(closeButton = TRUE,maxWidth = 100)) %>%
+  addPopups(-73.73093696338323, 40.7184732562638, Queens_content,
+            options = popupOptions(closeButton = TRUE,maxWidth = 100)) %>%
+  addPopups( -74.181493, 40.552025, Staten_Island_content,
+            options = popupOptions(closeButton = TRUE,maxWidth = 100))
+nyc_map
+#htmlwidgets::saveWidget(nyc_map, file = "nyc_map.html")
+
 ```
 
