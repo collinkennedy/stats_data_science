@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(caret)
 library(tidyverse)
 library(readxl)
+library(forecast)
 
 library(plotly)
 library(httr)
@@ -33,7 +34,8 @@ us_counties = us_counties %>% arrange(county,date) %>%
   group_by(county) %>% 
   mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
   rename("total_deaths" = "deaths")
-us_counties
+
+
 
 
 #from cdc- merge nyt and cdc
@@ -41,9 +43,34 @@ cdc_vaccinations <-read_csv("Vaccine_Hesitancy_for_COVID-19__County_and_local_es
 cdc_vaccinations = cdc_vaccinations %>% rename("fips" = `FIPS Code`)
 cdc_vaccinations %>% head(10)
 
-#counties_vaccination_df = us_counties %>% left_join(cdc_vaccinations,by = "fips")
 
 
+counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% left_join(cdc_vaccinations,by = "fips")
+counties_vaccination_df %>% head(20)
+
+
+
+```
+
+
+```{r}
+#attempt at whole US to get an idea of the overall picture
+
+
+#how many counties are there? 1930
+counties_vaccination_df %>% group_by(county) %>% 
+  summarize(number_of_counties = n_distinct(county)) %>% arrange(desc(number_of_counties))
+#55 states (includes territories like Guam)
+
+#look at los angeles and sum daily deaths, then compare to actual number
+counties_vaccination_df %>% drop_na(daily_deaths) %>% 
+  filter(daily_deaths > - 1) %>% 
+  filter(state == "California") %>% filter(county == "Los Angeles")
+
+#count number of counties in california in this dataset and compare to actual number
+counties_vaccination_df %>% filter(state == "California") %>% 
+  group_by(county) %>% 
+  summarize(total_counties = n_distinct(county))
 
 ```
 
@@ -53,6 +80,41 @@ death_ts = ggplot(data = hesitancy_deaths, aes(x = `Week Ending Date`, y = `COVI
   ylim(0,17500)
 
 ggplotly(death_ts)
+
+ggplot(data = counties_vaccination_df, mapping = aes(x = date, y = total_deaths))+
+  geom_line()
+
+counties_vaccination_df
+
+time_series = ts(data = counties_vaccination_df$daily_deaths, start = c())
+time_series
+
+
+```
+
+## Plot of daily deaths in the 50 states
+```{r}
+#make data
+state_daily_deaths_df = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
+  filter(daily_deaths > -1) %>% 
+  group_by(state) %>% summarize(daily_deaths = sum(daily_deaths)) %>% summarize(total_d = sum(daily_deaths))
+state_daily_deaths_df
+
+#why are there negative daily deaths?
+counties_vaccination_df %>% filter(state == "Alaska") %>% 
+  filter(daily_deaths > -1) %>%
+  drop_na(daily_deaths) %>% 
+  group_by(county) %>%
+  summarize(total_deaths_in_county = sum(daily_deaths))
+
+#verify there are 23 deaths
+counties_vaccination_df %>% filter(county == "Bethel Census Area") %>% 
+  filter(daily_deaths > -1) %>% 
+  summarize(sum_daily_deaths = sum(daily_deaths))
+
+
+
+  
 
 ```
 
