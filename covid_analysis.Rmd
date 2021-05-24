@@ -1,0 +1,115 @@
+---
+title: "covid_analysis"
+author: "Collin"
+date: "5/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(tidyverse)
+library(readxl)
+
+library(plotly)
+library(httr)
+library(rvest)
+
+# hesitancy_by_county <- read_excel("aspe-county_week28_data_fixed.xlsx")
+# weekly_deaths_by_state <- read_csv("weekly_deaths_by_state.csv")
+# weekly_deaths_by_state$State = toupper(weekly_deaths_by_state$State)
+# weekly
+# 
+# hesitancy_deaths = full_join(hesitancy_by_county,weekly_deaths_by_state) %>% drop_na(`County Name`)
+# hesitancy_deaths$`Week Ending Date` = as.Date(hesitancy_deaths$`Week Ending Date`, "%m/%d/%y")
+
+
+#merge by state
+#from nyt
+us_counties <- read_csv("us-counties.csv")
+us_counties = us_counties %>% arrange(county,date) %>% 
+  group_by(county) %>% 
+  mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
+  rename("total_deaths" = "deaths")
+us_counties
+
+
+#from cdc- merge nyt and cdc
+cdc_vaccinations <-read_csv("Vaccine_Hesitancy_for_COVID-19__County_and_local_estimates.csv")
+View(cdc_vaccinations)
+
+
+death_ts = ggplot(data = hesitancy_deaths, aes(x = `Week Ending Date`, y = `COVID-19 Deaths`,group=State,color = State)) +geom_line() +
+  ylim(0,17500)
+
+ggplotly(death_ts)
+
+```
+
+
+```{r}
+#initialize data
+mm_data = read_csv("mask_mandate.csv")
+mm_data %>% head(50)
+death_data = read_csv("covid_deaths_by_county.csv")
+death_data %>% head(50)
+
+View(mm_data)
+
+
+death_data = death_data %>% 
+  rename("covid_deaths" = `Deaths involving COVID-19`) %>% 
+   drop_na(covid_deaths) %>%
+  select(-Footnote)
+
+print(death_data)
+
+#merge death and mm_data based on 
+
+mm_death_data = full_join(mm_data,death_data)
+
+mm_death_data %>% head(50)
+View(mm_death_data)
+death_data
+
+
+mm_death_data
+```
+
+
+```{r}
+#group data by county name, display when No Mask Mandate
+mm_death_data %>% filter(Current_order_status == "No Public Mask Mandate") %>% 
+  group_by(State_Tribe_Territory,County_Name) %>% 
+  arrange(desc(date)) %>% 
+  slice(c(1,n())) %>% select(State_Tribe_Territory,County_Name,FIPS_State,date,order_code,FIPS_County) %>% 
+  full_join(death_data) %>% filter(covid_deaths != NA)
+
+
+```
+
+
+
+
+```{r}
+html = read_html("https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy")
+
+stuff = xml2::read_html("https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy")
+library(rvest)
+library(xml2)
+ca_counties = read_html("https://www.nytimes.com/interactive/2021/us/california-covid-cases.html") %>% 
+  html_node("table.g-table.super-table.withchildren") %>% html_table()
+ca_counties
+
+?html_nodes
+```
+
+
+
+
+
+```{r}
+
+
+```
+
