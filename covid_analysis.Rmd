@@ -26,7 +26,9 @@ library(rvest)
 
 #merge by state
 #from nyt
+
 us_counties <- read_csv("us-counties.csv")
+us_counties
 us_counties = us_counties %>% arrange(county,date) %>% 
   group_by(county) %>% 
   mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
@@ -36,8 +38,16 @@ us_counties
 
 #from cdc- merge nyt and cdc
 cdc_vaccinations <-read_csv("Vaccine_Hesitancy_for_COVID-19__County_and_local_estimates.csv")
-View(cdc_vaccinations)
+cdc_vaccinations = cdc_vaccinations %>% rename("fips" = `FIPS Code`)
+cdc_vaccinations %>% head(10)
 
+#counties_vaccination_df = us_counties %>% left_join(cdc_vaccinations,by = "fips")
+
+
+
+```
+
+```{r}
 
 death_ts = ggplot(data = hesitancy_deaths, aes(x = `Week Ending Date`, y = `COVID-19 Deaths`,group=State,color = State)) +geom_line() +
   ylim(0,17500)
