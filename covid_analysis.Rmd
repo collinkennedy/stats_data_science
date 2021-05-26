@@ -15,14 +15,7 @@ library(forecast)
 library(plotly)
 library(httr)
 library(rvest)
-
-# hesitancy_by_county <- read_excel("aspe-county_week28_data_fixed.xlsx")
-# weekly_deaths_by_state <- read_csv("weekly_deaths_by_state.csv")
-# weekly_deaths_by_state$State = toupper(weekly_deaths_by_state$State)
-# weekly
-# 
-# hesitancy_deaths = full_join(hesitancy_by_county,weekly_deaths_by_state) %>% drop_na(`County Name`)
-# hesitancy_deaths$`Week Ending Date` = as.Date(hesitancy_deaths$`Week Ending Date`, "%m/%d/%y")
+library(ggpubr)
 
 
 #merge by state
@@ -30,10 +23,10 @@ library(rvest)
 
 us_counties <- read_csv("us-counties.csv")
 us_counties
-us_counties = us_counties %>% arrange(county,date) %>% 
-  group_by(county) %>% 
-  mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
-  rename("total_deaths" = "deaths")
+# us_counties = us_counties %>% 
+#   group_by(county) %>% 
+#   mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
+#   rename("total_deaths" = "deaths")
 
 
 
@@ -46,10 +39,26 @@ cdc_vaccinations %>% head(10)
 
 
 counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% left_join(cdc_vaccinations,by = "fips")
-counties_vaccination_df %>% head(20)
 
+#THE dataframe to use for analysis
+counties_vaccination_df = counties_vaccination_df %>% 
+  group_by(state,county) %>% 
+  mutate(daily_deaths = deaths - lag(deaths)) %>% 
+  rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
 
+```
 
+```{r}
+
+#TEST TEST TEST
+#test case should be 64 total deaths in Bibb County, Alabama
+counties_vaccination_df %>% filter(state == "Alabama") %>% 
+  filter(county == "Bibb") %>% select(county,total_deaths,daily_deaths) %>% drop_na(daily_deaths) %>% 
+  summarize(total_daily_deaths = sum(daily_deaths))
+
+vector1 = c(0,0,0,1,1,2,3,4)
+vector2 = vector1 - lag(vector1)
+vector2
 ```
 
 
@@ -62,60 +71,45 @@ counties_vaccination_df %>% group_by(county) %>%
   summarize(number_of_counties = n_distinct(county)) %>% arrange(desc(number_of_counties))
 #55 states (includes territories like Guam)
 
-#look at los angeles and sum daily deaths, then compare to actual number
-counties_vaccination_df %>% drop_na(daily_deaths) %>% 
-  filter(daily_deaths > - 1) %>% 
-  filter(state == "California") %>% filter(county == "Los Angeles")
 
-#count number of counties in california in this dataset and compare to actual number
-counties_vaccination_df %>% filter(state == "California") %>% 
-  group_by(county) %>% 
-  summarize(total_counties = n_distinct(county))
 
-```
+sum_daily_deaths = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
+  group_by(state,county) %>% 
+  summarize(sum_daily_deaths = sum(daily_deaths))
+sum_daily_deaths
 
-```{r}
-
-death_ts = ggplot(data = hesitancy_deaths, aes(x = `Week Ending Date`, y = `COVID-19 Deaths`,group=State,color = State)) +geom_line() +
-  ylim(0,17500)
-
-ggplotly(death_ts)
-
-ggplot(data = counties_vaccination_df, mapping = aes(x = date, y = total_deaths))+
-  geom_line()
-
-counties_vaccination_df
-
-time_series = ts(data = counties_vaccination_df$daily_deaths, start = c())
-time_series
 
 
 ```
+
+
+
+
+
 
 ## Plot of daily deaths in the 50 states
 ```{r}
 #make data
-state_daily_deaths_df = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
-  filter(daily_deaths > -1) %>% 
-  group_by(state) %>% summarize(daily_deaths = sum(daily_deaths)) %>% summarize(total_d = sum(daily_deaths))
-state_daily_deaths_df
 
-#why are there negative daily deaths?
-counties_vaccination_df %>% filter(state == "Alaska") %>% 
-  filter(daily_deaths > -1) %>%
-  drop_na(daily_deaths) %>% 
-  group_by(county) %>%
-  summarize(total_deaths_in_county = sum(daily_deaths))
+counties_vaccination_df %>% filter(state == "Washington")
+str(counties_vaccination_df$state)
 
-#verify there are 23 deaths
-counties_vaccination_df %>% filter(county == "Bethel Census Area") %>% 
-  filter(daily_deaths > -1) %>% 
-  summarize(sum_daily_deaths = sum(daily_deaths))
-
-
-
+#make 50 different graphs
+plot_vector = c()
+for(st in unique(counties_vaccination_df$state)){
+  plot_data = counties_vaccination_df %>% select(date,daily_deaths,state) %>% 
+    filter(state == st) %>% 
+    filter(daily_deaths >= 0) 
+    
+    covid_plot = ggplot(data = plot_data,mapping = aes(x = date, y = daily_deaths, color = state))+
+      geom_line()
+    plot_vector = c(plot_vector,covid_plot)
+    
   
-
+  
+}
+str(plot_vector)
+ggarrange(plot_vector, ncol = 5)
 ```
 
 
@@ -164,6 +158,8 @@ mm_death_data %>% filter(Current_order_status == "No Public Mask Mandate") %>%
 
 
 ```{r}
+
+#IGNORE
 html = read_html("https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy")
 
 stuff = xml2::read_html("https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy")
