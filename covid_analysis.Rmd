@@ -48,7 +48,11 @@ counties_vaccination_df = counties_vaccination_df %>%
 
 ```
 
+
+
+#TEST
 ```{r}
+counties_vaccination_df
 
 #TEST TEST TEST
 #test case should be 64 total deaths in Bibb County, Alabama
@@ -73,10 +77,11 @@ counties_vaccination_df %>% group_by(county) %>%
 
 
 
+#This should verify the data is correct
 sum_daily_deaths = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
-  group_by(state,county) %>% 
+  group_by(state,county) %>% filter(county != "Unknown") %>% 
   summarize(sum_daily_deaths = sum(daily_deaths))
-sum_daily_deaths
+sum_daily_deaths %>% filter(sum_daily_deaths < 0)
 
 
 
