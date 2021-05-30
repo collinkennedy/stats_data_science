@@ -17,12 +17,13 @@ library(httr)
 library(rvest)
 library(ggpubr)
 library(quantmod)
-library(Hmisc)
-library(lfe)
-library(AER)
-library(forecast)
-library(astsa)
-library(aTSA)
+# library(Hmisc)
+# library(lfe)
+# library(AER)
+# library(forecast)
+# library(astsa)
+# library(aTSA)
+
 
 #merge by state
 #from nyt
@@ -55,18 +56,23 @@ counties_vaccination_df = counties_vaccination_df %>%
 
 
 counties_vaccination_df %>% arrange(date) %>% head(5)
+
+counties_vaccination_df %>% drop_na(daily_deaths) %>% 
+  group_by(state,county) %>% 
+  dplyr::summarize(total_daily_deaths = sum(daily_deaths))
+  
+  
+  
 ```
 
 
 #TEST
 ```{r}
-counties_vaccination_df
-
 #TEST TEST TEST
 #test case should be 64 total deaths in Bibb County, Alabama
 counties_vaccination_df %>% filter(state == "Alabama") %>% 
   filter(county == "Bibb") %>% select(county,total_deaths,daily_deaths) %>% drop_na(daily_deaths) %>% 
-  summarize(summed_daily_deaths = sum(daily_deaths), total_deaths = )
+  dplyr::summarize(summed_daily_deaths = sum(daily_deaths))
 
 vector1 = c(0,0,0,1,1,2,3,4)
 vector2 = vector1 - lag(vector1)
@@ -165,7 +171,7 @@ counties_vaccination_df
 #test case should be 64 total deaths in Bibb County, Alabama
 counties_vaccination_df %>% filter(state == "Alabama") %>% 
   filter(county == "Bibb") %>% select(county,total_deaths,daily_deaths) %>% drop_na(daily_deaths) %>% 
-  summarize(total_daily_deaths = sum(daily_deaths))
+  dplyr::summarize(total_daily_deaths = sum(daily_deaths))
 
 vector1 = c(0,0,0,1,1,2,3,4)
 vector2 = vector1 - lag(vector1)
@@ -184,10 +190,10 @@ counties_vaccination_df %>% group_by(county) %>%
 
 
 
-#This should verify the data is correct
-sum_daily_deaths = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
+#This should verify the data is correct-> no more negatives
+sum_daily_deaths = counties_vaccination_df %>% 
   group_by(state,county) %>% 
-  summarize(sum_daily_deaths = sum(daily_deaths))
+  dplyr::summarize(sum_daily_deaths = sum(daily_deaths))
 sum_daily_deaths %>% filter(sum_daily_deaths < 0)
 
 
