@@ -96,6 +96,14 @@ vector2
 ?arima
 
 
+counties_vaccination_df %>% filter(daily_deaths < 0)
+
+#create time series object out of daily deaths
+daily_deaths_ts = ts(counties_vaccination_df$daily_deaths)
+plot(daily_deaths_ts)
+no_vax_model = sarima()
+
+
 #establish time series object for daily deaths
 ?
 
@@ -161,9 +169,9 @@ stationary_df %>% filter(stationary_status == "NOT STATIONARY") #District of Col
 
 
 
-
+#Model Construction
 ```{r}
-
+#TS model without vaccination rates
 
 
 
@@ -246,50 +254,14 @@ ggarrange(plot_vector, ncol = 5)
 ```
 
 
-```{r}
-#initialize data
-mm_data = read_csv("mask_mandate.csv")
-mm_data %>% head(50)
-death_data = read_csv("covid_deaths_by_county.csv")
-death_data %>% head(50)
-
-View(mm_data)
-
-
-death_data = death_data %>% 
-  rename("covid_deaths" = `Deaths involving COVID-19`) %>% 
-   drop_na(covid_deaths) %>%
-  select(-Footnote)
-
-print(death_data)
-
-#merge death and mm_data based on 
-
-mm_death_data = full_join(mm_data,death_data)
-
-mm_death_data %>% head(50)
-View(mm_death_data)
-death_data
-
-
-mm_death_data
-```
-
-
-```{r}
-#group data by county name, display when No Mask Mandate
-mm_death_data %>% filter(Current_order_status == "No Public Mask Mandate") %>% 
-  group_by(State_Tribe_Territory,County_Name) %>% 
-  arrange(desc(date)) %>% 
-  slice(c(1,n())) %>% select(State_Tribe_Territory,County_Name,FIPS_State,date,order_code,FIPS_County) %>% 
-  full_join(death_data) %>% filter(covid_deaths != NA)
-
-
-```
 
 
 
 
+
+
+
+#Ignore
 ```{r}
 
 #IGNORE
