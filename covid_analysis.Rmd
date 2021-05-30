@@ -50,6 +50,9 @@ counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% lef
 #THE dataframe to use for analysis
 counties_vaccination_df = counties_vaccination_df %>% 
   group_by(state,county) %>% filter(county != "Unknown") %>% 
+  filter(state != "Northern Mariana Islands") %>% 
+  filter(state != "Virgin Islands") %>% 
+  filter(state != "District of Columbia") %>% 
   mutate(daily_deaths = deaths - lag(deaths)) %>% 
   mutate(date = as.Date(date)) %>% 
   rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
@@ -125,6 +128,7 @@ summary(death_model)
 
 states = unique(counties_vaccination_df$state)
 
+
 # out = adf.test(daily_deaths_ts)
 # unname(out$type1[1,3]) #loop over the row but keep 3rd column because thats the p-value
 # str(out$type1)
@@ -151,6 +155,17 @@ for(place in states){
   }  
 }
 stationary_df %>% filter(stationary_status == "NOT STATIONARY") #District of Columbia only non-stationary 
+
+```
+
+
+
+
+
+```{r}
+
+
+
 
 ```
 
@@ -190,7 +205,7 @@ counties_vaccination_df %>% group_by(county) %>%
 
 
 
-#This should verify the data is correct-> no more negatives
+#This should verify the data is correct-> no more negativess
 sum_daily_deaths = counties_vaccination_df %>% 
   group_by(state,county) %>% 
   dplyr::summarize(sum_daily_deaths = sum(daily_deaths))
