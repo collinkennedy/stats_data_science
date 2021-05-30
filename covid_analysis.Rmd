@@ -16,7 +16,13 @@ library(plotly)
 library(httr)
 library(rvest)
 library(ggpubr)
-
+library(quantmod)
+library(Hmisc)
+library(lfe)
+library(AER)
+library(forecast)
+library(astsa)
+library(aTSA)
 
 #merge by state
 #from nyt
@@ -42,12 +48,113 @@ counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% lef
 
 #THE dataframe to use for analysis
 counties_vaccination_df = counties_vaccination_df %>% 
-  group_by(state,county) %>% 
+  group_by(state,county) %>% filter(county != "Unknown") %>% 
   mutate(daily_deaths = deaths - lag(deaths)) %>% 
+  mutate(date = as.Date(date)) %>% 
   rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
+
+
+counties_vaccination_df %>% arrange(date) %>% head(5)
+```
+
+
+#TEST
+```{r}
+counties_vaccination_df
+
+#TEST TEST TEST
+#test case should be 64 total deaths in Bibb County, Alabama
+counties_vaccination_df %>% filter(state == "Alabama") %>% 
+  filter(county == "Bibb") %>% select(county,total_deaths,daily_deaths) %>% drop_na(daily_deaths) %>% 
+  summarize(summed_daily_deaths = sum(daily_deaths), total_deaths = )
+
+vector1 = c(0,0,0,1,1,2,3,4)
+vector2 = vector1 - lag(vector1)
+vector2
+```
+
+
+# Time Series
+```{r}
+## Time series stuff
+
+?forecast::accuracy() #potentially use this to evaluate accuracy of our model when we validate the model on test data
+?ARMAacf
+?arima #fits an arima model to a time series object
+?arima.sim #simulates an arima model where you choose the parameters for ar and ma
+?ARMAtoMA #converts an ARMA to an infinite MA process (by property of invertibility)
+?sarima #fit a arima(p,d,q) with an xreg argument to provide other regressors
+?arima
+
+
+#establish time series object for daily deaths
+?
+
+counties_vaccination_df$L.daily_deaths <- Lag(counties_vaccination_df$daily_deaths, 1)
+counties_vaccination_df$L2.daily_deaths <- Lag(counties_vaccination_df$daily_deaths, 2)
+counties_vaccination_df$L3.daily_deaths <- Lag(counties_vaccination_df$daily_deaths, 3)
+
+auto.arima(counties_vaccination_df$daily_deaths)
+?auto.arima
+
+difference1 <- counties_vaccination_df$daily_deaths - counties_vaccination_df$L.daily_deaths
+difference2 <- counties_vaccination_df$L.daily_deaths - counties_vaccination_df$L2.daily_deaths
+difference3 <- counties_vaccination_df$L2.daily_deaths - counties_vaccination_df$L3.daily_deaths
+
+auto.arima(difference1)
+
+death_model <- lm(data = counties_vaccination_df, difference1 ~ difference2 + difference3 + counties_vaccination_df$`Percent adults fully vaccinated against COVID-19` + counties_vaccination_df$`Estimated hesitant`)
+summary(death_model)
+
+#ARMA(2,1)
+## Calls it an ARIMA(2,1,1 Process)
+```
+
+
+
+## Checking Stationarity Assumptions for each State
+```{r}
+#create a time series object for each state and check if its stationary 
+
+
+states = unique(counties_vaccination_df$state)
+
+# out = adf.test(daily_deaths_ts)
+# unname(out$type1[1,3]) #loop over the row but keep 3rd column because thats the p-value
+# str(out$type1)
+# 
+# str(out$type1[1,3])
+
+#create empty dataframe
+stationary_df = tibble(state = states, stationary_status = rep("stationary",length(states)) )
+stationary_df
+
+#LOOP TO DETERMINE WHICH STATES HAVE NON STATIONARY TIME SERIES
+for(place in states){ 
+  daily_deaths_ts = ts((counties_vaccination_df %>% filter(state== place))$daily_deaths, frequency = 1) #first create a ts object
+  adf_out = adf.test(daily_deaths_ts) #conduct the augmented-dickey fuller test for stationarity on the time series object
+  for(i in length(adf_out$type1[,3])){ #now loop through each lag of the adf.test output. if find a p-value > .05, conclude not stationary 
+    if(unname(adf_out$type1[i,3]) > .05){
+      stationary_df = stationary_df %>% mutate(stationary_status = case_when(
+        state == place ~ "NOT STATIONARY",
+        TRUE ~ as.character(stationary_status)
+      ))
+      next
+      
+    }
+  }  
+}
+stationary_df %>% filter(stationary_status == "NOT STATIONARY") #District of Columbia only non-stationary 
 
 ```
 
+Suggested Model by auto.arima: 
+$deaths_i = \beta_1deaths_{i-1} + \beta_2deaths_{i-2} + \alpha_1\theta_1 + \epsilon_i$ estimated by $deaths_i = .0528deaths_{i-1} + .0128deaths_{i-2} -.9862\theta_1$
+
+other model: 
+$deathdifference_i = \beta_0 + \beta_1deathdifference_{i-1} + \beta_2deathdifference_{i-2} + \beta_3fullyvaccinated_{i} + \beta_4EstimatedHesitant_i + \epsilon_i$ estimated by 
+
+$deathdifference_i = .099 - .68deathdifference_{i-1} - .38deathdifference_{i-2} + .27fullyvaccinated_{i} - 1.54EstimatedHesitant_i$
 
 
 #TEST
@@ -79,7 +186,7 @@ counties_vaccination_df %>% group_by(county) %>%
 
 #This should verify the data is correct
 sum_daily_deaths = counties_vaccination_df %>% drop_na(daily_deaths) %>% 
-  group_by(state,county) %>% filter(county != "Unknown") %>% 
+  group_by(state,county) %>% 
   summarize(sum_daily_deaths = sum(daily_deaths))
 sum_daily_deaths %>% filter(sum_daily_deaths < 0)
 
