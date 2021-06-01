@@ -206,6 +206,7 @@ no_vax_model
 ```
 
 
+#Current TS work
 ```{r}
 #Georgia Time series:
 california_data = counties_vaccination_df %>% filter(state == "California") %>% 
