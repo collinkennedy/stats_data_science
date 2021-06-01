@@ -35,7 +35,8 @@ us_counties
 #   mutate(daily_deaths = deaths - lag(deaths,1)) %>% 
 #   rename("total_deaths" = "deaths")
 
-
+us_states = read_csv("us-states.csv")
+us_states
 
 
 #from cdc- merge nyt and cdc
@@ -46,6 +47,10 @@ cdc_vaccinations %>% head(10)
 
 
 counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% left_join(cdc_vaccinations,by = "fips")
+
+
+
+
 
 #THE dataframe to use for analysis
 counties_vaccination_df = counties_vaccination_df %>% 
@@ -83,6 +88,19 @@ vector2
 ```
 
 
+## Find state with lowest vaccination rate
+```{r}
+
+
+counties_vaccination_df %>% group_by(state) %>% 
+  dplyr::summarize(lowest_vaccination_rate = min(mean(`Percent adults fully vaccinated against COVID-19`,na.rm = TRUE))) %>% arrange(lowest_vaccination_rate) #California with high vaccination rate, Georgia with the lowest average vaccination rate across counties
+
+counties_vaccination_df$
+```
+
+
+
+
 # Time Series
 ```{r}
 ## Time series stuff
@@ -96,12 +114,7 @@ vector2
 ?arima
 
 
-counties_vaccination_df %>% filter(daily_deaths < 0)
 
-#create time series object out of daily deaths
-daily_deaths_ts = ts(counties_vaccination_df$daily_deaths)
-plot(daily_deaths_ts)
-no_vax_model = sarima()
 
 
 #establish time series object for daily deaths
@@ -169,13 +182,68 @@ stationary_df %>% filter(stationary_status == "NOT STATIONARY") #District of Col
 
 
 
-#Model Construction
+#Model Construction (scratch this)
 ```{r}
 #TS model without vaccination rates
+counties_vaccination_df %>% filter(daily_deaths < 0)
+#turn into dummies
 
+state_dummies = as.factor(counties_vaccination_df$state)
+state_quant = model.matrix(~state_dummies)
+state_quant = state_quant[-1,]
+state_quant
+
+#create time series object out of daily deaths
+daily_deaths_ts = ts(counties_vaccination_df$daily_deaths)
+plot(daily_deaths_ts)
+
+daily_deaths_ts
+dim(state_quant)
+no_vax_model = auto.arima(daily_deaths_ts, stationary = TRUE, xreg = c(state_quant)) #telling me different dimensions
+no_vax_model
 
 
 ```
+
+
+```{r}
+#Georgia Time series:
+california_data = counties_vaccination_df %>% filter(state == "California") %>% 
+  filter(daily_deaths > -1) %>% 
+  filter(date >= "2020-03-03"	) %>% 
+  group_by(date) %>% 
+  dplyr::summarise(statewide_daily_deaths = sum(daily_deaths))
+california_data
+
+
+georgia_data = counties_vaccination_df %>% filter(state == "Georgia")%>% filter(daily_deaths > -1) %>% 
+  group_by(date) %>% 
+  dplyr::summarize(statewide_daily_deaths = sum(daily_deaths))
+georgia_data
+ #about 496 corrections -> negative daily death counts
+
+
+georgia_ts = ts(georgia_data$statewide_daily_deaths)
+georgia_ts
+ggplot(data = georgia_data, mapping = aes(x = date, y = statewide_daily_deaths))+
+  geom_line()+theme_minimal()
+
+#test for stationary
+adf.test(georgia_ts) #is stationary
+#acf to confirm, looks not stationary
+
+
+#try log-differencing transformation
+georgia_data = georgia_data %>% 
+  mutate(lag_statewide_daily_deaths = lag(statewide_daily_deaths)) %>% 
+  mutate(logdiff_statewide_dd = log(statewide_daily_deaths) - log(lag_statewide_daily_deaths))
+georgia_data
+
+
+```
+
+
+
 
 Suggested Model by auto.arima: 
 $deaths_i = \beta_1deaths_{i-1} + \beta_2deaths_{i-2} + \alpha_1\theta_1 + \epsilon_i$ estimated by $deaths_i = .0528deaths_{i-1} + .0128deaths_{i-2} -.9862\theta_1$
