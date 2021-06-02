@@ -50,8 +50,6 @@ counties_vaccination_df = us_counties %>% mutate(fips = as.double(fips)) %>% lef
 
 
 
-
-
 #THE dataframe to use for analysis
 counties_vaccination_df = counties_vaccination_df %>% 
   group_by(state,county) %>% filter(county != "Unknown") %>% 
@@ -70,7 +68,77 @@ counties_vaccination_df %>% drop_na(daily_deaths) %>%
   dplyr::summarize(total_daily_deaths = sum(daily_deaths))
   
   
+
   
+#bring in county population data:
+#variables of interest: "POPESTIMATE2019", COUNTY
+county_pop_data = readr::read_csv("co-est2019-alldata.csv")
+county_pop_data = county_pop_data %>% mutate(fips = paste0(STATE,COUNTY))
+county_pop_data = county_pop_data %>% rename("new_county_name" = "CTYNAME") %>% 
+  select(new_county_name,POPESTIMATE2019)
+
+
+
+counties_vaccination_df = counties_vaccination_df %>% mutate(new_county_name = paste(county," County"))
+counties_vaccination_df %>% head(50) %>% select(county,state,fips,cases,total_deaths, new_county_name)
+
+#merge county_pop_data into counties_vaccination_df so Ill have population data for each county
+counties_vaccination_df = counties_vaccination_df %>% inner_join(county_pop_data, by = "new_county_name")
+counties_vaccination_df
+
+```
+
+
+#State Level Analysis
+```{r}
+
+us_states = read_csv("us-states.csv")
+
+california_data = us_states %>% filter(state == "California") %>% arrange(date) %>% 
+  mutate(daily_deaths = deaths - lag(deaths)) %>% 
+  mutate(date = as.Date(date)) %>% 
+  rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
+
+
+alabama_data = us_states %>% filter(state == "Alabama") %>% arrange(date) %>% 
+  mutate(daily_deaths = deaths - lag(deaths)) %>% 
+  mutate(date = as.Date(date)) %>% 
+  rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
+
+
+
+
+#Actual Data??
+us_state_vaccinations = read_csv("us_state_vaccinations.csv")
+us_state_vaccinations
+
+#create vaccine data for California
+california_vaccinations = us_state_vaccinations %>% filter(location == "California") %>% rename("state" = "location")
+california_vaccinations
+
+#create vaccine data for Alabama
+alabama_vaccinations = us_state_vaccinations %>% filter(location == "Alabama") %>% 
+  rename("state" = "location")
+
+
+#merge us states and this
+state_vaccination_df = 
+
+```
+
+
+
+#California
+```{r}
+california_data = us_states %>% filter(state == "California") %>% arrange(date) %>% 
+  mutate(daily_deaths = deaths - lag(deaths)) %>% 
+  mutate(date = as.Date(date)) %>% 
+  rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
+california_data
+
+
+
+
 ```
 
 
