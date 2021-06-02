@@ -123,15 +123,28 @@ alabama_vaccinations = us_state_vaccinations %>% filter(location == "Alabama") %
 california_vaccination_df = california_data %>% left_join(california_vaccinations, by= "date") %>% 
   select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x") %>%
   mutate_at(vars(people_fully_vaccinated_per_hundred, share_doses_used), ~replace_na(., 0))
-california_vaccination_df$ 
-
+#fix data from 357 to 359
+california_vaccination_df$people_fully_vaccinated_per_hundred[355] = .34
+california_vaccination_df$people_fully_vaccinated_per_hundred[357:359] = rep(.52,3)
+california_vaccination_df$share_doses_used[357:359] = rep(.302,3)
+california_vaccination_df$people_fully_vaccinated_per_hundred[387] =3.26
+california_vaccination_df$share_doses_used[387] =.722
 
 
 #alabama_vaccination data for model building
 alabama_vaccination_df = alabama_data %>% left_join(alabama_vaccinations, by= "date") %>% 
-  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x")
-alabama_vaccination_df
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x")%>%
+  mutate_at(vars(people_fully_vaccinated_per_hundred, share_doses_used), ~replace_na(., 0))
 
+#fix some of the zeros:
+
+alabama_vaccination_df$people_fully_vaccinated_per_hundred[307] = .19
+alabama_vaccination_df$people_fully_vaccinated_per_hundred[309:310] = .28
+alabama_vaccination_df$share_doses_used[309:310] = .226
+alabama_vaccination_df$people_fully_vaccinated_per_hundred[339] = 2.79
+alabama_vaccination_df$share_doses_used[339] = .634
+
+alabama_vaccination_df
 
 #check for negatives
 california_vaccination_df %>% filter(daily_deaths < 0)
