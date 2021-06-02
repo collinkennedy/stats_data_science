@@ -119,32 +119,57 @@ alabama_vaccinations = us_state_vaccinations %>% filter(location == "Alabama") %
   rename("state" = "location")
 
 
-#merge us states and this
+#california_vaccination data for model building, use this for california
 california_vaccination_df = california_data %>% left_join(california_vaccinations, by= "date") %>% 
-  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used)
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x")
 california_vaccination_df
 
 
+#alabama_vaccination data for model building
 alabama_vaccination_df = alabama_data %>% left_join(alabama_vaccinations, by= "date") %>% 
-  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used)
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x")
 alabama_vaccination_df
 
+
+#check for negatives
+california_vaccination_df %>% filter(daily_deaths < 0)
+
 ```
-
-
-
-#California
+#Model Building
 ```{r}
-california_data = us_states %>% filter(state == "California") %>% arrange(date) %>% 
-  mutate(daily_deaths = deaths - lag(deaths)) %>% 
-  mutate(date = as.Date(date)) %>% 
-  rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
-california_data
+california_vaccination_df
+library(zoo)
 
+alabama_vaccination_df
+#create ts objects for both states:
+california_ts = zoo(california_vaccination_df$daily_deaths, seq(from = as.Date("2020-01-26"), to = as.Date("2021-05-30"), by = 1))
+
+alabama_ts = zoo(alabama_vaccination_df$daily_deaths, seq(from = as.Date("2020-03-14"), to = as.Date("2021-05-30"), by = 1))
+# california_ts = ts(california_vaccination_df$daily_deaths,frequency = 365, start = c(2020,26))
+plot(california_ts)
+acf(california_ts) #not looking so stationary
+pacf(california_ts) #gonna need a lot of AR lags
+
+
+california_xreg_matrix = as.matrix(california_vaccination_df %>% select(people_fully_vaccinated_per_hundred,share_doses_used))
+california_model = auto.arima(california_ts,xreg = california_xreg_matrix)
+california_model
+
+
+alabama_xreg_matrix = as.matrix(alabama_vaccination_df %>% select(people_fully_vaccinated_per_hundred,share_doses_used))
+alabama_model = auto.arima(alabama_ts,xreg = alabama_xreg_matrix)
+alabama_model
 
 
 
 ```
+
+
+
+#Prediction
+
+
+
 
 
 #TEST
@@ -279,6 +304,9 @@ no_vax_model
 ```
 
 
+
+
+
 #Current TS work
 ```{r}
 #Georgia Time series:
@@ -319,13 +347,6 @@ georgia_data
 
 
 
-Suggested Model by auto.arima: 
-$deaths_i = \beta_1deaths_{i-1} + \beta_2deaths_{i-2} + \alpha_1\theta_1 + \epsilon_i$ estimated by $deaths_i = .0528deaths_{i-1} + .0128deaths_{i-2} -.9862\theta_1$
-
-other model: 
-$deathdifference_i = \beta_0 + \beta_1deathdifference_{i-1} + \beta_2deathdifference_{i-2} + \beta_3fullyvaccinated_{i} + \beta_4EstimatedHesitant_i + \epsilon_i$ estimated by 
-
-$deathdifference_i = .099 - .68deathdifference_{i-1} - .38deathdifference_{i-2} + .27fullyvaccinated_{i} - 1.54EstimatedHesitant_i$
 
 
 #TEST
@@ -370,39 +391,6 @@ sum_daily_deaths %>% filter(sum_daily_deaths < 0)
 
 
 
-## Plot of daily deaths in the 50 states
-```{r}
-#make data
-
-counties_vaccination_df %>% filter(state == "Washington")
-str(counties_vaccination_df$state)
-
-#make 50 different graphs
-plot_vector = c()
-for(st in unique(counties_vaccination_df$state)){
-  plot_data = counties_vaccination_df %>% select(date,daily_deaths,state) %>% 
-    filter(state == st) %>% 
-    filter(daily_deaths >= 0) 
-    
-    covid_plot = ggplot(data = plot_data,mapping = aes(x = date, y = daily_deaths, color = state))+
-      geom_line()
-    plot_vector = c(plot_vector,covid_plot)
-    
-  
-  
-}
-str(plot_vector)
-ggarrange(plot_vector, ncol = 5)
-```
-
-
-
-
-
-
-
-
-
 #Ignore
 ```{r}
 
@@ -421,10 +409,4 @@ ca_counties
 
 
 
-
-#weird
-```{r}
-
-
-```
 
