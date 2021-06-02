@@ -91,7 +91,7 @@ counties_vaccination_df
 
 #State Level Analysis-Use this!
 ```{r}
-
+#from new york times github
 us_states = read_csv("us-states.csv")
 
 california_data = us_states %>% filter(state == "California") %>% arrange(date) %>% 
@@ -121,8 +121,10 @@ alabama_vaccinations = us_state_vaccinations %>% filter(location == "Alabama") %
 
 #california_vaccination data for model building, use this for california
 california_vaccination_df = california_data %>% left_join(california_vaccinations, by= "date") %>% 
-  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x")
-california_vaccination_df
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used) %>% rename("state" = "state.x") %>%
+  mutate_at(vars(people_fully_vaccinated_per_hundred, share_doses_used), ~replace_na(., 0))
+california_vaccination_df$ 
+
 
 
 #alabama_vaccination data for model building
@@ -153,7 +155,7 @@ pacf(california_ts) #gonna need a lot of AR lags
 
 california_xreg_matrix = as.matrix(california_vaccination_df %>% select(people_fully_vaccinated_per_hundred,share_doses_used))
 california_model = auto.arima(california_ts,xreg = california_xreg_matrix)
-california_model
+california_model$fitted
 
 
 alabama_xreg_matrix = as.matrix(alabama_vaccination_df %>% select(people_fully_vaccinated_per_hundred,share_doses_used))
@@ -167,6 +169,11 @@ alabama_model
 
 
 #Prediction
+```{r}
+
+
+```
+
 
 
 
