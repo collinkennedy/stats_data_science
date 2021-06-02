@@ -89,7 +89,7 @@ counties_vaccination_df
 ```
 
 
-#State Level Analysis
+#State Level Analysis-Use this!
 ```{r}
 
 us_states = read_csv("us-states.csv")
@@ -98,14 +98,12 @@ california_data = us_states %>% filter(state == "California") %>% arrange(date) 
   mutate(daily_deaths = deaths - lag(deaths)) %>% 
   mutate(date = as.Date(date)) %>% 
   rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
-
+california_data
 
 alabama_data = us_states %>% filter(state == "Alabama") %>% arrange(date) %>% 
   mutate(daily_deaths = deaths - lag(deaths)) %>% 
   mutate(date = as.Date(date)) %>% 
   rename("total_deaths" = "deaths") %>% drop_na(daily_deaths)
-
-
 
 
 #Actual Data??
@@ -122,7 +120,14 @@ alabama_vaccinations = us_state_vaccinations %>% filter(location == "Alabama") %
 
 
 #merge us states and this
-state_vaccination_df = 
+california_vaccination_df = california_data %>% left_join(california_vaccinations, by= "date") %>% 
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used)
+california_vaccination_df
+
+
+alabama_vaccination_df = alabama_data %>% left_join(alabama_vaccinations, by= "date") %>% 
+  select(date, state.x,fips,cases,total_deaths,daily_deaths,people_fully_vaccinated_per_hundred,total_vaccinations,total_distributed,people_vaccinated,share_doses_used)
+alabama_vaccination_df
 
 ```
 
@@ -156,7 +161,7 @@ vector2
 ```
 
 
-## Find state with lowest vaccination rate
+## Find state with lowest vaccination rate (ignore)
 ```{r}
 
 
