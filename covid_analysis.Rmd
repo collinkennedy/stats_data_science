@@ -150,6 +150,9 @@ alabama_vaccination_df
 california_vaccination_df %>% filter(daily_deaths < 0)
 
 ```
+
+
+
 #Model Building
 ```{r}
 california_vaccination_df
