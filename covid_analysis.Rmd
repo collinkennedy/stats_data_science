@@ -72,18 +72,14 @@ counties_vaccination_df %>% drop_na(daily_deaths) %>%
   
 #bring in county population data:
 #variables of interest: "POPESTIMATE2019", COUNTY
-county_pop_data = readr::read_csv("co-est2019-alldata.csv")
-county_pop_data = county_pop_data %>% mutate(fips = paste0(STATE,COUNTY))
-county_pop_data = county_pop_data %>% rename("new_county_name" = "CTYNAME") %>% 
-  select(new_county_name,POPESTIMATE2019)
+county_pop_data = read_csv("co-est2019-alldata.csv")
+county_pop_data = county_pop_data %>% mutate(fips = as.double(paste0(STATE,COUNTY)))
+county_pop_data = county_pop_data %>%
+                  select(fips,POPESTIMATE2019)
 
-
-
-counties_vaccination_df = counties_vaccination_df %>% mutate(new_county_name = paste(county," County"))
-counties_vaccination_df %>% head(50) %>% select(county,state,fips,cases,total_deaths, new_county_name)
 
 #merge county_pop_data into counties_vaccination_df so Ill have population data for each county
-counties_vaccination_df = counties_vaccination_df %>% inner_join(county_pop_data, by = "new_county_name")
+counties_vaccination_df = counties_vaccination_df %>% left_join(county_pop_data, by = "fips")
 counties_vaccination_df
 
 ```
@@ -430,6 +426,65 @@ ca_counties
 ?html_nodes
 ```
 
+#Visualization
+```{r}
+ca_ave_deaths = mean(california_data$daily_deaths)
+Al_ave_deaths = mean(alabama_data$daily_deaths)
+two_states_death_df = data.frame(c(ca_ave_deaths, Al_ave_deaths), c("California", "Alabama"))
+names(two_states_death_df) = c("daily_deaths", "State")
+
+ggplot(data = two_states_death_df, aes(x = State, y = daily_deaths)) +
+  geom_bar(stat = 'identity') +
+  ylab("Daily Deaths") +
+  ggtitle("Two States Daily Deaths")
+
+Alabama_hesitency = counties_vaccination_df %>%
+  filter(state=="Alabama") %>%
+  select(state, county, `Estimated hesitant`, 
+         `Estimated hesitant or unsure`,
+         `Estimated strongly hesitant`, POPESTIMATE2019) %>%
+  unique() %>%
+  mutate(est_hesitant_pop = `Estimated hesitant` * POPESTIMATE2019) %>%
+  mutate(est_hesitant_undure_pop = `Estimated hesitant or unsure` * POPESTIMATE2019) %>%
+  mutate(est_strong_hesitant_pop = `Estimated strongly hesitant` * POPESTIMATE2019) %>%
+  select(county, `Estimated hesitant`, 
+         `Estimated hesitant or unsure`,
+         `Estimated strongly hesitant`, POPESTIMATE2019,
+         est_hesitant_pop, est_hesitant_undure_pop, est_strong_hesitant_pop)
+
+al_hesitent_percent = sum(Alabama_hesitency$est_hesitant_pop)/sum(Alabama_hesitency$POPESTIMATE2019)
+al_unsure_percent = sum(Alabama_hesitency$est_hesitant_undure_pop)/sum(Alabama_hesitency$POPESTIMATE2019)
+al_strong_hesitant_percent = sum(Alabama_hesitency$est_strong_hesitant_pop)/sum(Alabama_hesitency$POPESTIMATE2019)
+
+California_hesitency = counties_vaccination_df %>%
+  filter(state=="California") %>%
+  select(state, county, `Estimated hesitant`, 
+         `Estimated hesitant or unsure`,
+         `Estimated strongly hesitant`, POPESTIMATE2019) %>%
+  unique() %>%
+  mutate(est_hesitant_pop = `Estimated hesitant` * POPESTIMATE2019) %>%
+  mutate(est_hesitant_undure_pop = `Estimated hesitant or unsure` * POPESTIMATE2019) %>%
+  mutate(est_strong_hesitant_pop = `Estimated strongly hesitant` * POPESTIMATE2019) %>%
+  select(county, `Estimated hesitant`, 
+         `Estimated hesitant or unsure`,
+         `Estimated strongly hesitant`, POPESTIMATE2019,
+         est_hesitant_pop, est_hesitant_undure_pop, est_strong_hesitant_pop)
+
+ca_hesitent_percent = sum(California_hesitency$est_hesitant_pop)/sum(California_hesitency$POPESTIMATE2019)
+ca_unsure_percent = sum(California_hesitency$est_hesitant_undure_pop)/sum(California_hesitency$POPESTIMATE2019)
+ca_strong_hesitant_percent = sum(California_hesitency$est_strong_hesitant_pop)/sum(California_hesitency$POPESTIMATE2019)
+
+two_states_hesitancy_df = data.frame(c(ca_hesitent_percent, al_hesitent_percent,
+                                       ca_unsure_percent, al_unsure_percent,
+                                       ca_strong_hesitant_percent, al_strong_hesitant_percent),
+                                     c(rep(c("hesitent", "hesitent_unsure", "strongly_hesitent"), 2)),
+                                     c(rep(c("California", "Alabama"), 3)))
+
+names(two_states_hesitancy_df) = c("value", "hesitency_level", "state")
+
+ggplot(two_states_hesitancy_df, aes(x = state, y= value, fill = hesitency_level)) +
+  geom_bar(stat = "identity", position = "dodge")
+```
 
 
 
